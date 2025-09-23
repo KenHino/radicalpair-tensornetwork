@@ -35,6 +35,8 @@ See this repository [https://github.com/KenHino/Spin_dynamics](https://github.co
 # Run the code
 
 ## Benchmark for flavin anion and tryptophan cation
+<img width="597" height="554" alt="image" src="https://github.com/user-attachments/assets/0c49c80c-fdce-4c4f-911c-8202be3f4da6" />
+
 ```bash
 $ cd benchmark
 ```
@@ -72,6 +74,7 @@ $ spinchem input.ini
 
 
 ## Benchmark for toy model of identical nuclei
+<img width="926" height="413" alt="image" src="https://github.com/user-attachments/assets/3d422a4f-58fd-4349-abe6-1d6f434ef84a" />
 
 ### Locally purified MPS
 ```bash
@@ -86,6 +89,7 @@ $ uv run symmetry_reduction.py 12
 
 
 ## Anisotropy of cryptochrome
+<img width="337" height="286" alt="image" src="https://github.com/user-attachments/assets/57485abc-1581-42cc-88c1-ccb9043f733d" />
 
 ```bash
 $ cd anisotropy
