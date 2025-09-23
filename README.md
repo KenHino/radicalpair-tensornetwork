@@ -6,7 +6,7 @@ Script to reproduce manuscript
 ## Install Python (for tensor network methods, symmetry reduction, and plotting)
 We recommend using the [uv](https://docs.astral.sh/uv/) package manager. If you don't have uv installed, you can install it with:
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+$ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 All the dependencies are listed in `pyproject.toml`. You can install them with:
 ```bash
@@ -18,7 +18,7 @@ The implementation of general radical pair operation is based on [RadicalPy](htt
 ## Install Julia (for SC and SW calculations)
 We recommend using [juliaup](https://github.com/JuliaLang/juliaup) to install Julia.
 ```
-curl -fsSL https://install.julialang.org | sh
+$ curl -fsSL https://install.julialang.org | sh
 ```
 All the dependencies are listed in `Project.toml`. You can install them with:
 ```bash
@@ -83,6 +83,10 @@ $ uv run symmetry_reduction.py 12
 
 
 ## Anisotropy of cryptochrome
+
+```bash
+$ cd anisotropy
+```
 
 ### C-D hopping model by vMPDO
 ```bash
