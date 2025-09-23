@@ -12,7 +12,8 @@ All the dependencies are listed in `pyproject.toml`. You can install them with:
 ```bash
 $ uv sync
 ```
-The implementation of tensor network methods is based on this repository [https://github.com/QCLovers/PyTDSCF](https://github.com/QCLovers/PyTDSCF).
+The implementation of tensor network methods is based on [PyTDSCF](https://github.com/QCLovers/PyTDSCF).
+The implementation of general radical pair operation is based on [RadicalPy](https://github.com/Spin-Chemistry-Labs/radicalpy).
 
 ## Install Julia (for SC and SW calculations)
 We recommend using [juliaup](https://github.com/JuliaLang/juliaup) to install Julia.
