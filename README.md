@@ -107,6 +107,8 @@ $ uv run crypto-aiso-onepair.py 0.3 0 C
 ```
 where `0.3` is the cutoff in mT, `0` is the angle in pi/8, and `C` is the C or D.
 
+The notebook and input files we used to generate the geometres are in `coordinate` directory. See json files for the resulting hyperfine tensors.
+
 
 # Plot the results
 
