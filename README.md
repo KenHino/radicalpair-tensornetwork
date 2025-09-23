@@ -61,6 +61,7 @@ where `0.5` is the magnetic field in mT, and `16` is the bond dimension.
 $ julia --project=.. --threads=12 tutorial.jl
 ```
 where `12` is the number of threads. (Increase depending on the number of cores you have.)
+The definition of parameters are in `input_SC.ini`.
 
 ### Stochastic full wavefunction simulation
 ```bash
