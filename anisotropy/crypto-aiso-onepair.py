@@ -128,10 +128,6 @@ sort_nuclei(flavin)
 sort_nuclei(trp, reverse=True)
 
 sim = rp.simulation.LiouvilleSimulation([flavin, trp])
-A = {}
-for i in range(len(sim.radicals)):
-    for j, nuc in enumerate(sim.molecules[i].nuclei):
-        A[(i, j)] = nuc.hfc.anisotropic
 B = np.array((np.sin(angle * np.pi / 8), 0.0, np.cos(angle * np.pi / 8))) * B0
 
 A = {}
