@@ -1,0 +1,18 @@
+\documentclass[tikz]{standalone}
+% \usepackage{tikz} % already loaded by the documentclass
+
+
+\begin{document}
+\usetikzlibrary{positioning}
+\begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,fill=black!6,inner sep=4pt},
+    arrow/.style={-Latex,thick}
+  ]
+  \node[box] (pur) at (0,0) {$|\Psi_{\mathrm{pur}}\rangle$ in $\mathcal{H}_{\mathrm{phys}}\!\otimes\!\mathcal{H}_{\mathrm{anc}}$};
+  \node[box, right=0.5cm of pur] (evo) {$U_{\mathrm{tot}}=U_{\mathrm{phys}}\!\otimes\!\mathbb{1}$ (unitary)};
+  \node[box, right=0.5cm of evo] (rho) {$\rho(t)=\mathrm{Tr}_{\mathrm{anc}}(\,\cdot\,)$};
+  \draw[arrow] (pur)--(evo);
+  \draw[arrow] (evo)--(rho);
+\end{tikzpicture}
+\end{document}
+      

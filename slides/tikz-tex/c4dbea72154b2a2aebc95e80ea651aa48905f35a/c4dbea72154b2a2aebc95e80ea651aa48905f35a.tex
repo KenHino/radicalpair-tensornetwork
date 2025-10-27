@@ -1,0 +1,29 @@
+\documentclass[tikz]{standalone}
+% \usepackage{tikz} % already loaded by the documentclass
+
+
+\begin{document}
+\usetikzlibrary{arrows.meta,decorations.pathmorphing}
+\begin{tikzpicture}
+  \node (ph) at (0,1) {$h\nu$};
+  \node (D0) at (1,0) {Donor D};
+  \node (A0) at (1,2) {Acceptor A};
+  \draw[
+  decorate,
+  decoration={snake, amplitude=1.6pt, segment length=7pt},
+  -{Stealth[length=3pt]}
+  ] (ph) -- (A0);
+  \draw[-,thick] (D0) -- (A0);
+  \draw[->, thick] (2,1) -- (3,1);
+  \node (D1) at (4,0) {D};
+  \node (A1) at (4,2) {A$^\ast$};
+  \draw[-,thick] (D1) -- (A1);
+  \draw[->, line width=1.2pt, bend left=24, shorten >=1.5pt, shorten <=1.5pt]
+  (D1) to node[midway, above=1pt, inner sep=1pt, fill=white] {$e^-$} (A1);
+  \node (D2) at (7,0) {$D^{\bullet+}$};
+  \node (A2) at (7,2) {$A^{\bullet-}$};
+  \draw[-,thick] (D2) -- (A2);
+  \draw[->, thick] (5,1) -- (6,1);
+\end{tikzpicture}
+\end{document}
+      

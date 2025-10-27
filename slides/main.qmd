@@ -1,0 +1,1057 @@
+---
+title: "Modelling Radical Pair Quantum Spin Dynamics with Tensor Networks"
+author: "Kentaro Hino"
+
+filters:
+  - tikz
+
+format:
+  revealjs:
+    scrollable: true
+    auto-stretch: true
+    theme: [default]
+    footer: "Modelling Radical Pair Quantum Spin Dynamics with Tensor Networks"
+    chalkboard:
+        theme: whiteboard
+    slide-number: true
+    incremental: false
+    smaller: true
+    pointer:
+      pointerSize: 18
+      color: '#32cd32'
+
+revealjs-plugins:
+  - pointer
+
+tikz:
+  cache: false
+  save-tex: true  # Enable saving intermediate .tex files
+  tex-dir: tikz-tex  # Optional: Specify directory to save .tex files
+---
+
+# Overview
+
+## Reference and Link
+
+![](images/arxiv.png){width="90%"}
+
+- Hino, Frantzov, Antill, & Kurashige (2025). *Introduction of modelling radical pair quantum spin dynamics with tensor networks*. arXiv:2510.22104 [quant-ph].
+- <https://arxiv.org/abs/2509.22104>
+
+## Paper at a Glance
+
+::: {.callout-note}
+## Goal
+To introduce tensor-network methods for simulating the complete open quantum dynamics of radical-pair systems, including many nuclear spins.
+:::
+
+::: {.callout-tip}
+## Contributions
+- Three tensor-network formalisms: MPS, vectorised MPDO, and locally purified MPS.
+- A detailed convergence study on a system with 18 nuclei.
+- Application to anisotropic magnetosensitivity in flavin--tryptophan radical pairs.
+:::
+
+::: {.callout-important}
+## Why It Matters
+Provides an accurate, scalable simulation framework relevant to spin chemistry, quantum biology (e.g., avian magnetoreception), and spintronics.
+:::
+
+## Motivation: The Importance of Radical-Pair Spin Dynamics
+
+::: {.columns}
+::: {.column width="50%"}
+![Quantum birds illustration (from the paper)](images/quantum-birds.svg){width="90%"}
+:::
+
+::: {.column width="50%"}
+- **Quantum spin relaxation** underpins the interpretation of EPR/NMR and many excited-state phenomena.
+- **Radical pairs** are key intermediates in organic semiconductors, molecular qubits, and models of avian magnetoreception.
+- Realistic predictions require handling **arbitrary field orientations**, **anisotropic hyperfine couplings**, and **dissipation**.
+:::
+:::
+
+## Three Key Computational Challenges
+
+::: {.callout-note}
+## 1. The Initial State
+At room temperature, nuclear spins are in a highly mixed state. This necessitates ensemble averaging over all possible nuclear configurations.
+:::
+
+::: {.callout-note}
+## 2. Exponential Complexity
+The state space (Hilbert or Liouville) grows exponentially with the number of nuclei
+
+$$
+\text{Hilbert dim: } d_H = 2^2 \prod_{k=1}^{N}(2I_k+1), \quad
+\text{Liouville dim: } d_L = d_H^2
+$$
+:::
+
+::: {.callout-note}
+## 3. Long-Time Dynamics
+Simulating evolution on nanosecond-to-microsecond timescales requires numerically stable integrators. Often, ultrafast motions are averaged out (e.g., Redfield theory), which can miss non-Markovian effects.
+:::
+
+## Energy-level hierarchy
+
+```{.tikz}
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,baseline]
+% ----- columns (x) & rows (y) -----
+\def\xElec{1.4}
+\def\xVib{3.8}
+\def\xRot{6.1}
+\def\xSpin{8.6}
+
+\def\ySone{3.50}
+\def\yTone{2.80}
+\def\ySzero{0.30}
+
+% half-widths
+\def\wElec{0.55}
+\def\wVib{0.55}
+\def\wRot{0.55}
+\def\wSpin{0.55}
+
+% spacings
+\def\dvib{0.35}   % vibrational spacing (wide)
+\def\drot{0.10}   % rotational spacing (= dvib/3)
+\def\dspin{0.08}  % electron-spin spacing around center
+
+% styles
+\tikzset{lev/.style={line width=0.6pt}, dlev/.style={line width=0.6pt,dashed}}
+
+% ----- axis -----
+\draw[->,line width=0.9pt] (0,0) -- (0,4.5) node[above]{\small Energy};
+
+% ===== S1 row =====
+\draw[lev] (\xElec-\wElec,\ySone) -- (\xElec+\wElec,\ySone);
+\node[above] at (\xElec,\ySone) {$S_1$};
+
+% vib: 3 levels
+\draw[lev] (\xVib-\wVib,\ySone+0*\dvib) -- (\xVib+\wVib,\ySone+0*\dvib);
+\draw[lev] (\xVib-\wVib,\ySone+1*\dvib) -- (\xVib+\wVib,\ySone+1*\dvib);
+\draw[lev] (\xVib-\wVib,\ySone+2*\dvib) -- (\xVib+\wVib,\ySone+2*\dvib);
+
+% bridges S1→vib (3 lines; left at electronic right end, right at vib left end)
+\draw[dlev] (\xElec+\wElec,\ySone) -- (\xVib-\wVib,\ySone+0*\dvib);
+\draw[dlev] (\xElec+\wElec,\ySone) -- (\xVib-\wVib,\ySone+1*\dvib);
+\draw[dlev] (\xElec+\wElec,\ySone) -- (\xVib-\wVib,\ySone+2*\dvib);
+
+% ===== T1 row =====
+\draw[lev] (\xElec-\wElec,\yTone) -- (\xElec+\wElec,\yTone);
+\node[above] at (\xElec,\yTone) {$T_1$};
+
+% vib: 2 levels (v0, v1)
+\draw[lev] (\xVib-\wVib,\yTone+0*\dvib) -- (\xVib+\wVib,\yTone+0*\dvib);
+\draw[lev] (\xVib-\wVib,\yTone+1*\dvib) -- (\xVib+\wVib,\yTone+1*\dvib);
+
+% bridges T1→vib (2 lines)
+\draw[dlev] (\xElec+\wElec,\yTone) -- (\xVib-\wVib,\yTone+0*\dvib);
+\draw[dlev] (\xElec+\wElec,\yTone) -- (\xVib-\wVib,\yTone+1*\dvib);
+
+% rot (centered at v0): r=-1,0,+1
+\draw[lev] (\xRot-\wRot,\yTone-1*\drot) -- (\xRot+\wRot,\yTone-1*\drot);
+\draw[lev] (\xRot-\wRot,\yTone+0*\drot) -- (\xRot+\wRot,\yTone+0*\drot); % r=0
+\draw[lev] (\xRot-\wRot,\yTone+1*\drot) -- (\xRot+\wRot,\yTone+1*\drot);
+
+% bridges |T1,v0>→rot (3 lines)
+\draw[dlev] (\xVib+\wVib,\yTone+0*\dvib) -- (\xRot-\wRot,\yTone-1*\drot);
+\draw[dlev] (\xVib+\wVib,\yTone+0*\dvib) -- (\xRot-\wRot,\yTone+0*\drot);
+\draw[dlev] (\xVib+\wVib,\yTone+0*\dvib) -- (\xRot-\wRot,\yTone+1*\drot);
+
+% electron-spin (ONLY for T; centered at |T1,v0,r=0>)
+\draw[lev] (\xSpin-\wSpin,\yTone-1*\dspin) -- (\xSpin+\wSpin,\yTone-1*\dspin);
+\draw[lev] (\xSpin-\wSpin,\yTone+0*\dspin) -- (\xSpin+\wSpin,\yTone+0*\dspin); % ms=0 (center)
+\draw[lev] (\xSpin-\wSpin,\yTone+1*\dspin) -- (\xSpin+\wSpin,\yTone+1*\dspin);
+
+% bridge rot (r=0) → spin (ms=0)
+\draw[dlev] (\xRot+\wRot,\yTone+0*\drot) -- (\xSpin-\wSpin,\yTone-1*\dspin);
+\draw[dlev] (\xRot+\wRot,\yTone+0*\drot) -- (\xSpin-\wSpin,\yTone+0*\dspin);
+\draw[dlev] (\xRot+\wRot,\yTone+0*\drot) -- (\xSpin-\wSpin,\yTone+1*\dspin);
+
+% ===== S0 row =====
+\draw[lev] (\xElec-\wElec,\ySzero) -- (\xElec+\wElec,\ySzero);
+\node[above] at (\xElec,\ySzero) {$S_0$};
+
+% vib: 4 levels (v0..v3)
+\draw[lev] (\xVib-\wVib,\ySzero+0*\dvib) -- (\xVib+\wVib,\ySzero+0*\dvib);
+\draw[lev] (\xVib-\wVib,\ySzero+1*\dvib) -- (\xVib+\wVib,\ySzero+1*\dvib);
+\draw[lev] (\xVib-\wVib,\ySzero+2*\dvib) -- (\xVib+\wVib,\ySzero+2*\dvib);
+\draw[lev] (\xVib-\wVib,\ySzero+3*\dvib) -- (\xVib+\wVib,\ySzero+3*\dvib);
+
+% bridges S0→vib (4 lines)
+\draw[dlev] (\xElec+\wElec,\ySzero) -- (\xVib-\wVib,\ySzero+0*\dvib);
+\draw[dlev] (\xElec+\wElec,\ySzero) -- (\xVib-\wVib,\ySzero+1*\dvib);
+\draw[dlev] (\xElec+\wElec,\ySzero) -- (\xVib-\wVib,\ySzero+2*\dvib);
+\draw[dlev] (\xElec+\wElec,\ySzero) -- (\xVib-\wVib,\ySzero+3*\dvib);
+
+% rot clusters at S0 for v=0 and v=1 (each: r=-1,0,+1)
+% v=0 center
+\draw[lev] (\xRot-\wRot,\ySzero-1*\drot) -- (\xRot+\wRot,\ySzero-1*\drot);
+\draw[lev] (\xRot-\wRot,\ySzero+0*\drot) -- (\xRot+\wRot,\ySzero+0*\drot);
+\draw[lev] (\xRot-\wRot,\ySzero+1*\drot) -- (\xRot+\wRot,\ySzero+1*\drot);
+% v=1 center
+\draw[lev] (\xRot-\wRot,\ySzero+1*\dvib-1*\drot) -- (\xRot+\wRot,\ySzero+1*\dvib-1*\drot);
+\draw[lev] (\xRot-\wRot,\ySzero+1*\dvib+0*\drot) -- (\xRot+\wRot,\ySzero+1*\dvib+0*\drot);
+\draw[lev] (\xRot-\wRot,\ySzero+1*\dvib+1*\drot) -- (\xRot+\wRot,\ySzero+1*\dvib+1*\drot);
+
+% bridges from |S0,v0> and |S0,v1> only (6 lines total)
+\draw[dlev] (\xVib+\wVib,\ySzero+0*\dvib) -- (\xRot-\wRot,\ySzero-1*\drot);
+\draw[dlev] (\xVib+\wVib,\ySzero+0*\dvib) -- (\xRot-\wRot,\ySzero+0*\drot);
+\draw[dlev] (\xVib+\wVib,\ySzero+0*\dvib) -- (\xRot-\wRot,\ySzero+1*\drot);
+\draw[dlev] (\xVib+\wVib,\ySzero+1*\dvib) -- (\xRot-\wRot,\ySzero+1*\dvib-1*\drot);
+\draw[dlev] (\xVib+\wVib,\ySzero+1*\dvib) -- (\xRot-\wRot,\ySzero+1*\dvib+0*\drot);
+\draw[dlev] (\xVib+\wVib,\ySzero+1*\dvib) -- (\xRot-\wRot,\ySzero+1*\dvib+1*\drot);
+
+% ----- category labels (restored) -----
+\node[align=center,font=\scriptsize] at (\xElec,0.0) {Electronic levels};
+\node[align=center,font=\scriptsize] at (\xVib,0.0) {Vibrational levels};
+\node[align=center,font=\scriptsize] at (\xRot,0.0) {Rotational levels};
+\node[align=center,font=\scriptsize] at (\xSpin,0.0) {Electron-spin levels};
+\end{tikzpicture}
+```
+
+
+- **Electronic Levels:** $\sim 8000~\mathrm{cm}^{-1}$ ($\sim 1~\mathrm{eV}$) $\rightarrow$ Visible absorption
+- **Vibrational Levels:** $\sim 3000~\mathrm{cm}^{-1}$ $\rightarrow$ Femtosecond dynamics
+- **Rotational Levels:** $0.1-10~\mathrm{cm}^{-1}$ $\rightarrow$ Picosecond dynamics
+- **Electron Spin Splittings:** $10^{-4} - 1~\mathrm{cm}^{-1}$ $\rightarrow$ MHz--GHz dynamics
+
+# Radical Pair Basics & Hamiltonian
+
+## The Radical Pair Formation Process
+
+1. **Photoexcitation:** Acceptor A absorbs photon to form excited state $A^\ast$.
+2. **Charge Transfer:** Electron moves from donor D to $A^\ast$, forming radical pair $D^{\bullet+}|A^{\bullet-}$ in singlet state $|S\rangle$.
+3. **Intra-pair Interactions:** Unpaired electrons interact through exchange ($J$) and dipolar ($\mathbf{D}$) couplings.
+4. **Hyperfine Coupling:** Electron spins couple to nuclear spins via tensors ($\mathbf{A}_{i,j}$), enabling singlet-triplet conversion.
+5. **Zeeman Effect:** External field $\mathbf{B}$ sets precession axes and affects spin-selective reaction yields.
+
+```{.tikz}
+\usetikzlibrary{arrows.meta,decorations.pathmorphing}
+\begin{tikzpicture}
+  \node (ph) at (0,1) {$h\nu$};
+  \node (D0) at (1,0) {Donor D};
+  \node (A0) at (1,2) {Acceptor A};
+  \draw[
+  decorate,
+  decoration={snake, amplitude=1.6pt, segment length=7pt},
+  -{Stealth[length=3pt]}
+  ] (ph) -- (A0);
+  \draw[-,thick] (D0) -- (A0);
+  \draw[->, thick] (2,1) -- (3,1);
+  \node (D1) at (4,0) {D};
+  \node (A1) at (4,2) {A$^\ast$};
+  \draw[-,thick] (D1) -- (A1);
+  \draw[->, line width=1.2pt, bend left=24, shorten >=1.5pt, shorten <=1.5pt]
+  (D1) to node[midway, above=1pt, inner sep=1pt, fill=white] {$e^-$} (A1);
+  \node (D2) at (7,0) {$D^{\bullet+}$};
+  \node (A2) at (7,2) {$A^{\bullet-}$};
+  \draw[-,thick] (D2) -- (A2);
+  \draw[->, thick] (5,1) -- (6,1);
+\end{tikzpicture}
+```
+
+## The Singlet--Triplet (ST) Basis
+
+::: {.callout-note}
+## From Zeeman to ST Basis
+$$
+\begin{align*}
+|S\rangle   & = \tfrac{1}{\sqrt{2}}\big(|\uparrow\downarrow\rangle-|\downarrow\uparrow\rangle\big), \\
+|T_{+}\rangle &=|\uparrow\uparrow\rangle, \\
+|T_0\rangle & = \tfrac{1}{\sqrt{2}}\big(|\uparrow\downarrow\rangle+|\downarrow\uparrow\rangle\big), \\
+|T_{-}\rangle &=|\downarrow\downarrow\rangle.
+\end{align*}
+$$
+:::
+
+::: {.callout-note}
+## $\mathbf{S}_1 \cdot \mathbf{S}_2$ Operator and Projectors
+The operator $\hat{\mathbf{S}}_1 \cdot \hat{\mathbf{S}}_2 = \tfrac{1}{2}(\hat{\mathbf{S}}^2-\hat{\mathbf{S}}_1^2-\hat{\mathbf{S}}_2^2)$ yields eigenvalues of $-\frac{3}{4}$ for the singlet state and $+\frac{1}{4}$ for triplet states (with $\hbar=1$). This allows us to define the projection operators:
+
+$$
+\begin{align*}
+\hat{P}_S & = |S\rangle\langle S| = \tfrac{1}{4}\mathbb{1} - \hat{\mathbf{S}}_1 \cdot \hat{\mathbf{S}}_2, \\
+\hat{P}_T & = \mathbb{1} - \hat{P}_S = \tfrac{3}{4}\mathbb{1} + \hat{\mathbf{S}}_1 \cdot \hat{\mathbf{S}}_2.
+\end{align*}
+$$
+:::
+
+## The Radical Pair Hamiltonian
+
+$$
+\hat{H}_{\text{total}} = \underbrace{\hat{H}_{\text{Z}}}_{\text{Zeeman}} + \underbrace{\hat{H}_{\text{H}}}_{\text{Hyperfine}} + \underbrace{\hat{H}_{\text{J}}}_{\text{Exchange}} + \underbrace{\hat{H}_{\text{D}}}_{\text{Dipolar}} + \underbrace{\hat{H}_{\text{K}}}_{\text{Reaction}}
+$$
+
+$$
+\begin{align*}
+\hat{H}_{\text{Z}} & = -\gamma_e \mathbf{B}^{\top} \cdot \sum_{i=1}^{2}\hat{\mathbf{S}}_i - \sum_{i=1}^{2}\sum_{j=1}^{N_i}\gamma^{(n)}_{i,j} \mathbf{B}^{\top} \cdot \hat{\mathbf{I}}_{i,j}, \\
+\hat{H}_{\text{H}} & = \sum_{i=1}^{2}\sum_{j=1}^{N_i}\hat{\mathbf{S}}_i^{\top} \cdot \mathbf{A}_{i,j} \cdot \hat{\mathbf{I}}_{i,j}, \\
+\hat{H}_{\text{J}} & = -2J \hat{\mathbf{S}}_1^{\top} \cdot \hat{\mathbf{S}}_2, \\
+\hat{H}_{\text{D}} & = \hat{\mathbf{S}}_1^{\top} \cdot \mathbf{D} \cdot \hat{\mathbf{S}}_2, \\
+\hat{H}_{\text{K}} & = -\tfrac{i}{2}\big(k_S \hat{P}_S + k_T \hat{P}_T\big). \quad\text{(Haberkorn Model)}
+\end{align*}
+$$
+
+- $\hat{\mathbf{S}}_i = [\hat{S}_i^x, \hat{S}_i^y, \hat{S}_i^z]$: spin of electron $i$; $\hat{\mathbf{I}}_{i,j} = [\hat{I}_{i,j}^x, \hat{I}_{i,j}^y, \hat{I}_{i,j}^z]$: spin of $j$-th nucleus coupled to electron $i$.
+- $\mathbf{A}_{i,j}$: hyperfine tensor; $\mathbf{D}$: dipolar tensor; $J$: exchange coupling
+- $k_S, k_T$: spin-selective reaction rates.
+
+## Gyromagnetic Ratios & Spin Quantum Numbers
+
+| **Species** | **Spin ($I$ or $S$)** | **$\boldsymbol{\gamma}$ [rad s$^{-1}$ T$^{-1}$]** | **Notes** |
+|-------------|----------------------|---------------------------------------------------|-----------|
+| Electron $e^-$ | $S=1/2$ | $-1.76 \times 10^{11}$ | negative sign |
+| $^{1}\mathrm{H}$ | $I=1/2$ | $2.68 \times 10^8$ | Proton |
+| $^{14}\mathrm{N}$ | $I=1$ | $1.93 \times 10^7$ | Three levels ($2I+1=3$) |
+| $^{13}\mathrm{C}$ | $I=1/2$ | $6.73 \times 10^7$ | ($^{12}\mathrm{C}$ is spin-0) |
+
+- The electron gyromagnetic ratio $\gamma_e$ is $\sim$1000 times larger than that of nuclei.
+- Nuclear-nuclear spin interactions are negligible on the microsecond timescale.
+- The Earth's magnetic field ($\sim 0.05~\mathrm{mT}$) induces a tiny electronic Zeeman splitting ($\sim 70~\mu\text{K}$).
+- EPR experiments are typically conducted at much higher fields ($\sim 1~\mathrm{T}$).
+
+## Electron--Electron Coupling: $\mathbf{C} = \mathbf{D} - 2J\mathbb{1}$
+
+The total spin-spin interaction can be written as:
+
+$$
+\hat{H}_{\text{SS}} = \hat{\mathbf{S}}_1^{\top} \mathbf{C} \hat{\mathbf{S}}_2 = \hat{\mathbf{S}}_1^{\top} \mathbf{D} \hat{\mathbf{S}}_2 - 2J \hat{\mathbf{S}}_1 \cdot \hat{\mathbf{S}}_2
+$$
+
+::: {.callout-note}
+## Physical Meaning
+- **Exchange ($J$):** Arises from the exchange integral. It determines the singlet-triplet energy gap, $\Delta E_{ST}=2J$. It typically decays exponentially with inter-radical distance: $J(r) \approx J_0 e^{-r/a}$.
+- **Dipolar Tensor ($\mathbf{D}$):** A through-space magnetic dipole-dipole interaction. It lifts the degeneracy of the triplet sublevels (zero-field splitting). In the point-dipole approximation:
+  $$
+  \mathbf{D} = \frac{\mu_0}{4\pi} \frac{(\gamma_e\hbar)^2}{r^3} \big(\mathbb{1} - 3\hat{\mathbf{r}}\hat{\mathbf{r}}^{\top}\big)
+  $$
+  $|\mathbf{D}|$ decays as $r^{-3}$, dominating over $J$ at long range.
+:::
+
+## The Magnetic Field Effect (MFE)
+
+![](images/rp.svg){width="55%"}
+
+- Hyperfine-driven $S \leftrightarrow T$ interconversion is modulated by the external field $\mathbf{B}$ (both its magnitude and orientation).
+- Since recombination rates are spin-dependent (e.g., the singlet state recombines faster), the overall product yield becomes sensitive to the magnetic field.
+  $$
+  \Phi_S(\mathbf{B}) = k_S \int_{0}^{\infty} dt\, \mathrm{Tr}\big[\rho(t;\mathbf{B})\,\hat{P}_S\big].
+  $$
+
+## The Liouville-von Neumann Equation
+
+::: {.callout-note}
+## The Density Operator (Statistical Mixture of Nuclear Spin States)
+$$
+\rho = \sum_{p} w_p |\psi_p\rangle\langle\psi_p|, \quad \text{with } w_p \ge 0, \sum_p w_p = 1.
+$$
+
+For a pure state, $\rho=|\psi\rangle\langle\psi|$ (single wavefunction).
+:::
+
+::: {.callout-note}
+## Equation of Motion
+From the Schrödinger equation, $i\hbar \frac{d}{dt}|\psi\rangle = H |\psi\rangle$, we can derive the equation of motion for the density operator:
+
+$$
+\frac{d\rho}{dt} = -\frac{i}{\hbar}[H, \rho]
+$$
+
+The solution, $\rho(t) = U(t)\rho(0)U^\dagger(t)$, represents a completely positive and trace-preserving (CPTP) map, ensuring the physicality of the density operator at all times.
+:::
+
+## Efficient Computation via Liouville-Space Vectorisation
+
+Start with the full Liouville-von Neumann equation including reaction terms:
+
+$$
+\dot{\rho} = -i[H,\rho] - \frac{k_S}{2}\{P_S,\rho\} - \frac{k_T}{2}\{P_T,\rho\}.
+$$
+
+**Vectorisation** reshapes operators into vectors in a "doubled" state space:
+
+$$
+\rho \mapsto |\rho\rangle\rangle \in \mathcal{H} \otimes \mathcal{H}, \quad \text{where } \mathrm{vec}(A\rho B)=(B^{\top} \otimes A)|\rho\rangle\rangle.
+$$
+
+The equation of motion becomes a linear differential equation:
+
+$$
+i\,\partial_t |\rho\rangle\rangle = \hat{\hat{L}}_0 |\rho\rangle\rangle, \quad \text{with }
+\hat{\hat{L}}_0 = \mathbb{1} \otimes H - H^{\top} \otimes \mathbb{1} - \frac{i}{2}\sum_{A=S,T} (P_A \otimes \mathbb{1} + \mathbb{1} \otimes P_A^{\top}).
+$$
+
+## The Room-Temperature Initial State
+
+Nuclear Zeeman energies are far smaller than $k_B T$, so all nuclear spin states are almost equally populated.
+
+$$
+e^{-\beta H_{\text{nuc}}} \approx \mathbb{1}_{\text{nuc}} \implies \boxed{ \rho_0 \approx P_S \otimes \frac{\mathbb{1}_{\text{nuc}}}{Z_{\text{nuc}}} }, \quad Z_{\text{nuc}}=\prod_k (2I_k+1).
+$$
+
+This corresponds to an incoherent average over all nuclear product states:
+
+$$
+\rho_0 = \frac{1}{Z_{\text{nuc}}}\sum_{\mathbf{m}} \big(P_S \otimes |\mathbf{m}\rangle\langle\mathbf{m}|\big), \quad |\mathbf{m}\rangle=\bigotimes_k |m_k\rangle.
+$$
+
+::: {.callout-tip}
+## An Alternative: Stochastic Schrödinger Equation (SSE)
+1. Uniformly sample an ensemble of initial nuclear states $\{|\mathbf{m}_p\rangle\}_{p=1}^{N_{\text{traj}}}$.
+2. For each sample, propagate a wavefunction with an effective Hamiltonian: $i\partial_t|\Psi_p\rangle = H_{\text{eff}}|\Psi_p\rangle$, where $|\Psi_p(0)\rangle=|S\rangle\otimes|\mathbf{m}_p\rangle$.
+3. Average the results to estimate observables: $\langle P_S(t)\rangle \approx \frac{1}{N_{\text{traj}}}\sum_p \langle\Psi_p(t)|P_S|\Psi_p(t)\rangle$.
+:::
+
+## Evaluating $\langle P_S(t)\rangle$ via spin coherent states
+
+$$
+\langle P_S(t)\rangle \;=\; \mathrm{Tr}\!\left[P_S\,\rho(t)\right],\quad
+\rho(t)=U(t)\rho(0)U^\dagger(t).
+$$
+
+The spin coherent states
+$|\Omega_k\rangle = |\theta_k, \phi_k\rangle =  (1+|\zeta_k|^2)^{-I_k} e^{\zeta_k \hat{I}_{-}} |m_z=I_k\rangle$,
+where $\zeta_k = e^{i \phi_k} \tan(\theta_k/2)$, obey the resolution of identity:
+
+$$
+\bigotimes_{k=1}^{N_{\rm nuc}}\!\mathbb{1}_k \;=\;
+\bigotimes_{k=1}^{N_{\rm nuc}}
+\frac{2I_k+1}{4\pi}
+\int_0^{2\pi} d\phi_k \int_0^{\pi} d\theta_k \sin(\theta_k)
+|\Omega_k\rangle\!\langle\Omega_k|.
+$$
+
+At room temperature one often has $\rho(0)\propto P_S\otimes \mathbb{1}_{\rm nuc}$, giving
+
+$$
+\langle P_S(t)\rangle \;=\; \int \! d\boldsymbol{\Omega}\; p(\boldsymbol{\Omega})\;
+\langle S, \boldsymbol{\Omega} | U^\dagger(t) P_S U(t) | S, \boldsymbol{\Omega} \rangle.
+$$
+
+::: {.callout-note}
+Spin coherent state basis $|\boldsymbol{\Omega}\rangle$ converges faster than the product basis $|\mathbf{m}\rangle$ in the stochastic Schrödinger equation.
+:::
+
+# Tensor network methods
+
+## Low-Rank Approximation via SVD
+
+::: {.callout-note}
+## Best Rank-$r$ Approximation
+For any matrix $X$, the singular value decomposition (SVD) is $X = U\Sigma V^\dagger$. The best rank-$r$ approximation to $X$ is found by keeping only the $r$ largest singular values:
+
+$$
+X_r = \sum_{i=1}^{r} \sigma_i \mathbf{u}_i \mathbf{v}_i^\dagger \quad (r < \mathrm{rank}(X))
+$$
+
+This truncation minimises the Frobenius norm of the error on the low-rank manifold $\mathcal{M}_r=\{Y:\,\mathrm{rank}(Y)\le r\}$:
+
+$$
+X_r = \arg\min_{Y \in \mathcal{M}_r} \| X - Y \|_F
+$$
+:::
+
+::: {.callout-note}
+## Physical Intuition
+The largest singular values capture the main features of the matrix. Discarding small ones compresses the data, as in image compression and tensor networks.
+:::
+
+## SVD as Image Compression
+
+![](images/svd_comparison.png){width="90%"}
+
+## Diagrammatic Tensor Notation
+
+We can represent tensors graphically to make complex contractions intuitive.
+
+- A **node** represents a tensor.
+- A **leg** (or edge) represents an index.
+- **Connecting** legs implies summation over the shared index (contraction).
+
+```{.tikz}
+\begin{tikzpicture}[
+    scale=0.9, every node/.style={scale=0.9},
+    tensor/.style={draw,fill=blue!20,rounded corners=2pt,minimum size=8mm},
+  ]
+  % Vector
+  \node[tensor] (v) at (0,0) {$v$};
+  \draw[-] (v.east) -- ++(0.7,0) node[right] {$i$};
+  \node at (0, -1) {(a) Vector $v_i$};
+
+  % Matrix
+  \node[tensor] (M) at (4,0) {$M$};
+  \draw[-] (M.west) -- ++(-0.7,0) node[left] {$i$};
+  \draw[-] (M.east) -- ++(0.7,0) node[right] {$j$};
+  \node at (4, -1) {(b) Matrix $M_{ij}$};
+
+  % Matrix-Vector Product
+  \node[tensor] (M2) at (8,0) {$M$};
+  \node[tensor] (v2) at (9.4,0) {$v$};
+  \draw[-] (M2.west) -- ++(-0.7,0) node[left] {$i$};
+  \draw[-] (M2.east) -- (v2.west) node[midway,above] {$j$};
+  \node at (8.7, -1) {(c) Product $\sum_j M_{ij} v_j$};
+\end{tikzpicture}
+```
+
+**SVD as a Tensor Network:** A matrix (rank-2 tensor) is decomposed into a chain of three tensors.
+
+```{.tikz}
+\begin{tikzpicture}[
+    tensor/.style={draw,fill=blue!20,rounded corners=2pt,minimum size=8mm},
+  ]
+  \node[tensor] (X) at (0,0) {$X$};
+  \draw (X.west) -- ++(-0.7,0) node[left]{$i$};
+  \draw (X.east) -- ++(0.7,0) node[right]{$j$};
+  \node at (2,0) {$=$};
+  \node[tensor] (U) at (4,0) {$U$};
+  \node[tensor] (S) at (5.4,0) {$\Sigma$};
+  \node[tensor] (V) at (6.8,0) {$V^\dagger$};
+  \draw (U.west) -- ++(-0.7,0) node[left]{$i$};
+  \draw (U.east) -- (S.west) node[midway,above]{$k$};
+  \draw (S.east) -- (V.west) node[midway,above]{$k'$};
+  \draw (V.east) -- ++(0.7,0) node[right]{$j$};
+\end{tikzpicture}
+```
+
+## Matrix Product States (MPS)
+
+::: {.callout-note}
+## The MPS Ansatz
+A many-body quantum state can be efficiently represented by factorising its coefficient tensor into a one-dimensional chain of smaller tensors:
+
+$$
+|\Psi\rangle = \sum_{\sigma_1,\dots,\sigma_N}
+A^{[1]}_{\sigma_1}
+A^{[2]}_{\sigma_2}\cdots
+A^{[N]}_{\sigma_N}
+|\sigma_1, \dots, \sigma_N\rangle
+$$
+:::
+
+```{.tikz}
+\begin{tikzpicture}[
+    core/.style={draw,fill=blue!20,rounded corners=2pt,minimum size=8mm},
+    phyleg/.style={-},
+    bond/.style={-},
+  ]
+  \node[core] (C) at (-2,0) {$C$};
+  \draw[bond] (C) -- (-3,1) node[above, yshift=-1mm]{$\sigma_1$};
+  \draw[bond] (C) -- (-2.5,1) node[above, yshift=-1mm]{$\sigma_2$};
+  \draw[bond] (C) -- (-2.0,1) node[above, yshift=-1mm]{$\cdots$};
+  \draw[bond] (C) -- (-1.5,1) node[above, yshift=-1mm]{$\sigma_N$};
+  \node at (-1,0) {$\simeq$};
+  \node[core] (A1) at (0,0) {$A^{[1]}$};
+  \node[core] (A2) at (1.8,0) {$A^{[2]}$};
+  \node at (3.0,0) {$\cdots$};
+  \node[core] (AN) at (4.2,0) {$A^{[N]}$};
+  \draw[bond] (A1.east) -- (A2.west) node[midway,above]{$\alpha_1$};
+  \draw[bond] (A2.east) -- (2.7,0) node[midway,above]{$\alpha_2$};
+  \draw[bond] (3.3,0) -- (AN.west) node[midway,above]{$\alpha_{N-1}$};
+  \foreach \i/\x in {1/0,2/1.8,N/4.2}{
+      \draw[phyleg] (\x,0.4) -- ++(0,0.6) node[above, yshift=-1mm] {$\sigma_\i$};
+    }
+\end{tikzpicture}
+```
+
+- The dimensions of the connecting "virtual" bonds, known as the **bond dimension**, control the accuracy of the approximation.
+- This representation is close to exact for states with low entanglement.
+- We use this for the stochastic Schrödinger approach, where each trajectory $|\Psi_p(t)\rangle$ is an MPS.
+
+## Matrix Product Operator (MPO)
+
+::: {.callout-note}
+## MPO from sum of products of local operators (such as $S_x$)
+$$
+\hat{H} = \sum_{\{\sigma_k^\prime, \sigma_k\}}
+\prod_{k=1}^{N} \hat{W}^{[k]}, \quad
+\hat{W}^{[k]} = W_{\sigma_k^\prime, \beta_{k-1} \beta_k, \sigma_k} |\sigma_k^\prime\rangle \langle\sigma_k|
+$$
+
+The tensor elements $W_{\sigma_k^\prime, \beta_{k-1} \beta_k, \sigma_k} \in \mathbb{C}^{M_{k-1} \times d_k \times d_k\times M_k}$ are determined by bipartite graph theory [Ren et al. (JCP, 2020)].
+:::
+
+![](images/mps-mpo.svg){width="50%"}
+
+## Matrix Product Density Operator (MPDO)
+
+::: {.callout-note}
+## Density operator on low-rank manifold
+$$
+\hat{\rho} = \sum_{\{\sigma_k, \sigma_k^\prime\}}
+\prod_{k=1}^{N} \hat{C}^{[k]}, \quad
+\hat{C}^{[k]} = C_{\sigma_k^\prime, \gamma_{k-1} \gamma_k, \sigma_k} |\sigma_k^\prime\rangle \langle\sigma_k|
+$$
+:::
+
+MPDO has the same structure as MPO, but how can we propagate the density operator?
+
+1. Vectorisation approach: approximate $\mathrm{vec}(\rho)$ as an MPS-like chain
+2. Purification approach: approximate $\Psi$ which consists $\rho=\mathrm{Tr}_{\mathrm{anc}}(|\Psi\rangle\langle\Psi|)$.
+3. ~~DMRG like approach: apply propagator gate $\hat{U}(t)$ to the MPDO and renormalise every time step. (infeasible)~~
+
+## Vectorised MPDO (vMPDO)
+
+::: {.callout-note}
+## Liouville-space equation (bond dimension $\boldsymbol{\chi}$)
+$$
+i\frac{d}{dt}|\rho\rangle\rangle
+= \hat{\hat{L}}_0 |\rho\rangle\rangle,\quad
+\hat{\hat{L}}_0=\mathbb{1}\!\otimes \hat{H}-\hat{H}^{\top}\!\otimes\mathbb{1}
+-\frac{i}{2}\sum_{X=S,T}\!\left(\hat{P}_X\!\otimes\!\mathbb{1}+\mathbb{1}\!\otimes\!\hat{P}_X^{\top}\right).
+$$
+:::
+
+![](images/mpdo.svg){width="90%"}
+
+## The Purification Approach (LPMPS)
+
+::: {.callout-note}
+## Physical density operator (bond dimension $\mathbf{r}$)
+The physical density operator is recovered by tracing out an ancilla system:
+
+$$
+\rho_{\text{phys}}(t) = \mathrm{Tr}_{\text{anc}}\left( |\Psi_{\text{pur}}(t)\rangle\langle\Psi_{\text{pur}}(t)| \right)
+$$
+
+$$
+|\Psi_{\mathrm{pur}}\rangle
+=\!\!\sum_{\{\sigma_k,s_k\}}\!
+\Big(\prod_{\ell=1}^{2N} A^{[\ell]}_{\xi_\ell}\Big)\,
+|\xi_1,\ldots,\xi_{2N}\rangle,\quad
+\xi_{2k-1}=\sigma_k,\;\xi_{2k}=s_k
+$$
+:::
+
+- The total system (physical + ancilla) is represented by a single pure-state MPS.
+- Time evolution is performed with the physical Hamiltonian acting only on the physical sites: $\hat{H}_{\text{total}} = \hat{H}_{\text{phys}} \otimes \mathbb{1}_{\text{anc}}$.
+
+Refs: Verstraete et al. (PRL, 2004)
+
+## LPMPS
+
+![](images/lpmps.svg){width="80%"}
+
+## Complete positivity (CP)
+
+Let $U_{\mathrm{tot}}(t)=e^{-i(H_{\mathrm{phys}}\otimes \mathbb{1})t}$. Then
+
+$$
+\rho(t)=\mathrm{Tr}_{\mathrm{anc}}\!\left[U_{\mathrm{tot}}(t)\,
+|\Psi_{\mathrm{pur}}(0)\rangle\langle\Psi_{\mathrm{pur}}(0)|\,
+U_{\mathrm{tot}}^\dagger(t)\right]
+=U_{\mathrm{phys}}(t)\,\rho(0)\,U_{\mathrm{phys}}^\dagger(t),
+$$
+
+which is nothing other than the time evolution of the physical density operator.
+
+By definition, $\rho(t) = |\Psi_{\mathrm{pur}}(t)\rangle\langle\Psi_{\mathrm{pur}}(t)|$, density operator holds the semidefinite property.
+
+```{.tikz}
+\usetikzlibrary{positioning}
+\begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,fill=black!6,inner sep=4pt},
+    arrow/.style={-Latex,thick}
+  ]
+  \node[box] (pur) at (0,0) {$|\Psi_{\mathrm{pur}}\rangle$ in $\mathcal{H}_{\mathrm{phys}}\!\otimes\!\mathcal{H}_{\mathrm{anc}}$};
+  \node[box, right=0.5cm of pur] (evo) {$U_{\mathrm{tot}}=U_{\mathrm{phys}}\!\otimes\!\mathbb{1}$ (unitary)};
+  \node[box, right=0.5cm of evo] (rho) {$\rho(t)=\mathrm{Tr}_{\mathrm{anc}}(\,\cdot\,)$};
+  \draw[arrow] (pur)--(evo);
+  \draw[arrow] (evo)--(rho);
+\end{tikzpicture}
+```
+
+::: {.callout-important}
+## Key Advantage: Guaranteed Positivity
+Since the resulting $\rho_{\text{phys}}(t)$ is obtained by partially tracing a pure state, it is **guaranteed to be a positive semidefinite operator** by construction, a crucial physical property that can be violated in the vMPDO approach if the bond dimension is too small.
+:::
+
+## Summary of Tensor Network Methods
+
+| **Method** | **Stochastic MPS** | **vMPDO** | **LPMPS** |
+|------------|-------------------|-----------|-----------|
+| **Space** | Hilbert | Liouville | Hilbert+Ancilla |
+| **State** | Ensemble of $|\Psi_p\rangle$ | $|\rho\rangle\rangle$ | Single $|\Psi_{\text{pur}}\rangle$ |
+| **Linear Action** | $\hat{H}$ | $\hat{\hat{L}}$ | $H_{\mathrm{phys}}\otimes \mathbb{1}_{\mathrm{anc}}$ |
+| **Bond Dim.** | $m$ | $\chi$ | $r$ |
+| **Cost** | $\mathcal{O}(K N m^3)$ | $\mathcal{O}(N \chi^3)$ | $\mathcal{O}(N r^3)$ |
+| **Deterministic?** | No | Yes | Yes |
+| **Guaranteed Positivity?** | Yes | No | Yes |
+| **Parallelisation** | Distributed Memory | Shared Memory | Shared Memory |
+
+- **Stochastic MPS:** Requires many trajectories ($K$) but often with a smaller bond dimension ($m$) per trajectory. Excellent for parallel computing.
+- **vMPDO/LPMPS:** Deterministic but require larger bond dimensions ($\chi, r$) and more memory, making them suitable for powerful single-node or shared-memory systems.
+
+## Time Evolution via the Time-Dependent Variational Principle (TDVP)
+
+::: {.callout-note}
+## The Challenge
+Applying the time evolution operator $e^{-i\hat{H}\Delta t}$ to an MPS generally increases its bond dimension. To keep the simulation tractable, we must project the evolved state back onto the low-rank MPS manifold.
+:::
+
+::: {.callout-tip}
+## The TDVP Solution
+TDVP provides a principled way to perform this projection. It approximates the exact time evolution by finding the optimal state within the MPS manifold at each timestep.
+
+$$
+\frac{d}{dt}|\Psi(t)\rangle = -i \mathcal{P}_{\mathcal{T}}\left( \hat{H}|\Psi(t)\rangle \right)
+$$
+
+where $\mathcal{P}_{\mathcal{T}}$ projects onto the tangent space of the MPS manifold.
+:::
+
+Refs: Haegeman et al. (PRB, 2016)
+
+## TDVP in diagrammatic form
+
+$$
+\hat{\mathcal{P}}_{\mathcal{T}} = \sum_{j=1}^{N} \hat{\mathcal{P}}_{\mathrm{L}}^{[1:j-1]} \otimes \hat{1}_j \otimes \hat{\mathcal{P}}_{\mathrm{R}}^{[j+1:N]}
+- \sum_{j=1}^{N-1} \hat{\mathcal{P}}_{\mathrm{L}}^{[1:j]} \otimes \hat{\mathcal{P}}_{\mathrm{R}}^{[j+1:N]}
+$$
+
+![](images/tdvp.svg){width="70%"}
+
+# Benchmarking
+
+## Benchmark System: 18 Nuclear Spins
+
+To test the methods, we used a realistic model of a flavin-tryptophan radical pair with 18 nearby nuclear spins (Hilbert space size: 5,308,416)
+
+::: {.callout-note}
+## Key Hamiltonian Parameters
+- Exchange Coupling: $J = 0.224~\mathrm{mT}$
+- Dipolar Coupling: $\mathbf{D} = -0.38~\mathrm{mT} \times \mathrm{diag}(-\frac{2}{3}, -\frac{2}{3}, \frac{4}{3})$
+- Reaction Rates: $k_S = k_T = 1~\mu\mathrm{s}^{-1}$
+- Hyperfine Couplings: 18 isotropic values taken from literature.
+:::
+
+::: {.callout-note}
+## Magnetic Fields
+Simulations were run with the field aligned along the z-axis at three strengths:
+
+- **0.05 mT:** Geomagnetic field strength.
+- **0.50 mT:** A moderate field.
+- **5.00 mT:** A strong field where Zeeman interaction dominates.
+:::
+
+## Semiclassical models: SW and SC (to avoid exponential complexity)
+
+::: {.callout-note}
+## Schulten--Wolynes (SW) approximation
+- Nuclear spins $\mathbf{I}_{i,j}$ are treated as fixed classical vectors.
+- Electrons precess in a static effective field $\mathbf{B}_{\mathrm{eff},i}=\mathbf{B}+\sum_j \mathbf{A}_{i,j}\mathbf{I}_{i,j}$.
+- The size of Liouville space is $4 \times 4 = 16$.
+:::
+
+::: {.callout-note}
+## Semiclassical (SC) approximation (by Manolopoulos and Hore)
+- Both electronic and nuclear spins are mapped to classical vectors $\mathbf{S}_i(t) \in \mathbb{R}^3, \mathbf{I}_{i,j}(t) \in \mathbb{R}^3, \mathbf{T}(t) \in \mathbb{R}^{3 \times 3}, \mathbf{1}(t) \in \mathbb{R}$ (two electronic spins as $4 \times 4=16$ variables and $3$ variables per a nuclear spin)
+:::
+
+::: {.callout-important}
+## Limitations
+- No coherence between electronic spin and nuclear spin
+- Requires a million of initial states for evaluation
+:::
+
+## Comparison: Quantum vs. Semiclassical
+
+![](images/B005-SW-vs-SC-vs-m16-vs-full.svg){width="80%"}
+
+- **Schulten-Wolynes (SW):** Fails to capture the correct dynamics.
+- **Semiclassical (SC):** Captures the general decay but misses the quantum coherent oscillations.
+- **MPS ($m=16$):** Accurately reproduces the full quantum mechanical result, even with a very small bond dimension.
+
+## Bond Dimension Convergence
+
+![Deviation $\langle P_S(t)\rangle - \langle P_S(t)\rangle_{\text{full}}$ at $|B_z|=0.05~\text{mT}$.](images/B005-deviation.svg){width="90%"}
+
+- The required bond dimension is higher for the deterministic methods (vMPDO, LPMPS) than for each stochastic MPS trajectory.
+- However, the stochastic method requires thousands of trajectories ($K=4096$) for convergence.
+
+## Dependence on Magnetic Field Strength
+
+![Error of different methods at a fixed, moderate bond dimension.](images/B-behaviour.svg){width="90%"}
+
+- The accuracy of the tensor network approximation **improves significantly** at higher magnetic fields.
+- **Reason:** The single-body Zeeman term becomes dominant over the many-body hyperfine and electron-electron couplings.
+- This is good news for simulating typical EPR experiment ($>10~\mathrm{mT}$).
+
+## Scalability with Number of Nuclear Spins
+
+A simplified model $B_z = 5.0~\mathrm{mT}, J=2.5~\mathrm{mT}, a_{1j} = \frac{3.0}{N_1} \mathrm{mT}, a_{2j} = \frac{9.0}{N_2} \mathrm{mT}$ was used to test scalability up to 60 nuclei.
+
+::: {.columns}
+::: {.column width="45%"}
+![Exact singlet probability.](images/N-vs-exactPs.svg){width="90%"}
+:::
+
+::: {.column width="55%"}
+![LPMPS error ($\delta P_S$).](images/N-vs-deltaPs.svg){width="100%"}
+:::
+:::
+
+- As more nuclei are added, the coherent oscillations are washed out, leading to smoother dynamics.
+- The LPMPS method maintains excellent accuracy ($\sim$1% deviation) even as the system size grows to 60 nuclei, a regime completely inaccessible to exact methods.
+
+## Time Scaling
+
+![](images/time.svg){width="90%"}
+
+- Elapsed time scales linearly with the number of nuclear spins.
+- Elapsed time scales cubically with the bond dimension.
+
+# Magnetosensitivity of Quantum Birds
+
+## The Radical Pair Hypothesis of Avian Magnetoreception
+
+::: {.callout-note}
+## The Hypothesis
+A light-activated radical pair, formed in cryptochrome proteins in a bird's retina, acts as a chemical magnetic compass.
+:::
+
+- The Earth's magnetic field affects the S-T conversion rate, changing the amount of signalling product formed.
+- The bird perceives this change as a visual pattern, allowing it to "see" the magnetic field lines.
+- Magnetic sensitivity of cryptochrome 4 (CRY4) from the European robin has been demonstrated experimentally (Xi et al, Nature 2021).
+
+**YouTube:** <https://youtu.be/0SPD2r0xV8k>
+
+## Application: Flavin--Tryptophan Radical Pair in CRY4
+
+::: {.callout-note}
+## The System
+We model the FAD$^{\bullet-}$ -- TrpH$^{\bullet+}$ radical pair in avian cryptochrome, using realistic, **anisotropic** hyperfine and electron-electron couplings.
+:::
+
+![The flavin (FAD) and tryptophan (Trp) molecules involved in the radical pair.](images/chromo4.svg){width="80%"}
+
+## Kinetic scheme of cryptochrome radical pairs (cartoon)
+
+```{.tikz}
+\usetikzlibrary{positioning,calc,fit,backgrounds}
+\begin{tikzpicture}[
+    >=Latex,
+    font=\footnotesize,
+    every node/.style={align=center},
+    state/.style={draw, rounded corners=2pt, inner sep=2pt, fill=blue!3},
+    box/.style={draw, rounded corners=3pt, inner sep=4pt, fill=green!6},
+    kred/.style={text=red!75!black},
+    kgrn/.style={text=green!50!black},
+    lbl/.style={text=blue!60!black},
+    flow/.style={-Latex, ultra thick, draw=blue!70!black},
+    thinflow/.style={-Latex, semithick, draw=blue!70!black},
+    back/.style={-Latex, semithick, draw=blue!70!black}
+  ]
+
+  % --- ladder on the left (Blue light excitation)
+  \node[state] (fadox) at (0,0) {$\mathrm{FAD}^{\mathrm{ox}}$};
+  \node[state, above=65mm of fadox] (fadstar) {$\mathrm{FAD}^{*}$};
+  \node[state, below right=3mm and 10mm of fadstar] (rpa) {$\mathrm{RP}_A$};
+  \node[state, below right=3mm and 10mm of rpa] (rpb) {$\mathrm{RP}_B$};
+
+  % --- composite radical pair box behind RPC/RPD
+  \node[state, fill=orange!15, inner sep=2pt, below right=4mm and 12mm of rpb] (rpc) {$\mathrm{RP}_C$};
+  \node[state, fill=orange!15, inner sep=2pt, right=14mm of rpc] (rpd) {$\mathrm{RP}_D$};
+  \begin{scope}[on background layer]
+    \node[box, fill=green!15, fit={(rpc) (rpd)}] (compbox) {};
+  \end{scope}
+  \node[above=4mm of compbox] {\scriptsize Composite radical pair};
+
+  \node[state, below=16mm of rpc] (rp2c) {$\mathrm{RP}_{2C}$};
+  \node[state, below=16mm of rpd] (rp2d) {$\mathrm{RP}_{2D}$};
+  \node at ($(rp2c)!0.5!(rp2d)+(0,4mm)$) {\scriptsize Stabilized\\radical pairs};
+  \node[state, below=18mm of $(rp2c)!0.5!(rp2d)$, minimum width=24mm] (fadh) {$\mathrm{FADH}^\bullet$\\[-1pt]\scriptsize Potential signalling state};
+
+  % main flow arrows (blue)
+  \draw[flow] (fadox) -- node[left, lbl]{Blue light} (fadstar);
+  \draw[flow] (fadstar) -- (rpa);
+  \draw[flow] (rpa) -- node[above, lbl, xshift=2mm] {$\sim 10^{12}$} (rpb);
+  \draw[flow] (rpb) -- node[above, lbl, xshift=2mm] {$\sim 10^{11}$} (rpc);
+
+  % interconversion C <-> D
+  \draw[thinflow] (rpc) -- ($(rpc)!0.5!(rpd)+(0,0.25)$) -- (rpd);
+  \draw[thinflow] (rpd) -- ($(rpc)!0.5!(rpd)-(0,0.25)$) -- (rpc);
+  \node[kred] at ($(rpc)!0.5!(rpd)+(0,0.75)$) {$k_{CD}=1.5 \times 10^{10}$};
+  \node[kred] at ($(rpc)!0.5!(rpd)-(0,0.75)$) {$k_{DC}=1.3 \times 10^{10}$};
+
+  % stabilized radical pairs RPC -> RP2C, RPD -> RP2D
+  \draw[thinflow] (rpc) -- node[left, kgrn] {$k_{Cf}=5.7 \times 10^{6}$} (rp2c);
+  \draw[thinflow] (rpd) -- node[right, kgrn] {$k_{Df}=10 \times 10^{6}$} (rp2d);
+
+  % signalling state
+  \draw[flow] (rp2c) -- (fadh);
+  \draw[flow] (rp2d) -- (fadh);
+  \draw[flow] (fadh) -- (fadox);
+
+  % back reactions to FADox (rates k_Cr)
+  \draw[thinflow] (rpc.south west) .. controls +(-1.0,-0.8) and +(0.6,1.1)
+  .. node[pos=0.55, right, kred] {$k_{Cr}=17 \times 10^{6}$} (fadox.north);
+
+\end{tikzpicture}
+```
+
+Refs: Xu et al. (Nature 2021), units are in $\mathrm{s}^{-1}$
+
+## Modelling Electron Hopping Between Two Radical Pairs
+
+In cryptochrome, the electron hole can hop between different tryptophan residues, creating a network of radical pairs (e.g., RP$_C$ and RP$_D$).
+
+- We model the dynamics of two coupled radical pairs (FAD/TrpC and FAD/TrpD) sharing a common flavin.
+- The hopping electron site is described by
+
+$$
+\begin{gathered}
+\mathrm{span}\{|\uparrow\uparrow 0\rangle, |\uparrow\downarrow 0\rangle, |\downarrow\uparrow 0\rangle, |\downarrow\downarrow 0\rangle, |\uparrow 0 \uparrow\rangle, |\uparrow 0 \downarrow\rangle, |\downarrow 0 \uparrow\rangle, |\downarrow 0 \downarrow\rangle\} \\
+= \mathrm{span}\{|T_{+}^{\mathrm{C}}\rangle, |T_0^{\mathrm{C}}\rangle, |S^{\mathrm{C}}\rangle, |T_-^{\mathrm{C}}\rangle, |T_+^{\mathrm{D}}\rangle, |T_0^{\mathrm{D}}\rangle, |S^{\mathrm{D}}\rangle, |T_-^{\mathrm{D}}\rangle\}
+\end{gathered}
+$$
+
+and Lindblad master equation,
+
+$$
+\begin{gathered}
+\mathcal{D}[\hat{\rho}] = \sum_{j\in\{\mathrm{C}\to\mathrm{D}, \mathrm{D}\to\mathrm{C}\}} \hat{L}_{j} \hat{\rho} \hat{L}_{j}^\dagger - \frac{1}{2} \hat{L}_{j}^\dagger \hat{L}_{j} \hat{\rho} - \frac{1}{2} \hat{\rho} \hat{L}_{j}^\dagger \hat{L}_{j} \\
+\hat{L}_{\mathrm{C}\to \mathrm{D}} = \sqrt{k_{\mathrm{C}\to \mathrm{D}}} \left( |\mathrm{D}\rangle\langle\mathrm{C}|\right), \quad
+\hat{L}_{\mathrm{D}\to \mathrm{C}} = \sqrt{k_{\mathrm{D}\to \mathrm{C}}} \left( |\mathrm{C}\rangle\langle\mathrm{D}|\right)
+\end{gathered}
+$$
+
+::: {.callout-note}
+## Vectorised form
+Use $\mathrm{vec}(A\rho B)=(B^\top\!\otimes A)|\rho\rangle\rangle$ to build $\hat{\hat{L}}$ and evolve as MPS.
+:::
+
+## Hamiltonian parameters
+
+**Hamiltonian parameters:**
+
+- $J$: exchange coupling taken from experiment by Gravell et al. (JACS, 2025).
+  - $J_{C} = 0.011 ~\mathrm{mT}$
+  - $J_{D} = 0.001 ~\mathrm{mT}$
+
+- $\mathbf{D}$: dipolar tensor taken from point-dipole approximation and crystal structure
+  - $\vec{r}_{C} = (9.480, -13.675, 5.388)$ Å
+  - $\vec{r}_{D} = (8.980, -18.684, 4.159)$ Å
+
+$$
+\mathbf{D}_{C}-2J_{C}\mathbb{1} =
+\begin{pmatrix}
+-0.019 & -0.441 & -0.174 \\
+-0.441 & -0.311 & 0.251  \\
+-0.174 & 0.251  & -0.226
+\end{pmatrix}
+~\mathrm{mT}
+$$
+
+$$
+\mathbf{D}_{D}-2J_{D}\mathbb{1} =
+\begin{pmatrix}
+0.068  & 0.221  & -0.049 \\
+0.221  & -0.286 & 0.102  \\
+-0.049 & 0.102  & 0.152
+\end{pmatrix}
+~\mathrm{mT}
+$$
+
+- $\mathbf{A}_{i,j}$: hyperfine tensor taken from electronic structure calculation by ORCA
+- $|B|$: geomagnetic field strength 0.05 mT
+
+## Singlet yield
+
+**Definition:**
+
+$$
+\mathbf{B} = B_0 [\cos\theta \cos\phi, \cos\theta \sin\phi, \sin\theta]
+$$
+
+We set $B_0 = 0.05 ~\mathrm{mT}$ and $\phi = 0$.
+
+$$
+\Phi_S(\tau; \theta) = k_S \int_{0}^{\tau} \! dt~\mathrm{Tr}\!\left[\rho(t; \theta)\,\hat{P}_S\right].
+$$
+
+::: {.columns}
+::: {.column width="49%"}
+![](images/phi_ref_cutoff0.1_chi1024.svg)
+:::
+
+::: {.column width="49%"}
+![](images/flavin-trpC-trpD-label.svg)
+:::
+:::
+
+## Anisotropic Magnetosensitivity at 0.05 mT with limited nuclear spins
+
+The relative change in singlet yield, $\Phi_S$, as a function of the magnetic field orientation ($\theta$).
+
+::: {.columns}
+::: {.column width="70%"}
+![](images/phi_cutoff0.3_chi1024_theta_4subplots.svg)
+:::
+
+::: {.column width="30%"}
+![](images/legend.svg)
+:::
+:::
+
+## Anisotropic magnetosensitivity at 0.05 mT
+
+Up to 30 nuclear spins.
+
+::: {.columns}
+::: {.column width="70%"}
+![](images/phi_cutoff0.1_chi1024_theta_4subplots.svg)
+:::
+
+::: {.column width="30%"}
+![](images/legend.svg)
+:::
+:::
+
+::: {.callout-important}
+## Observation
+Time-dependence of $\Phi_S(\tau; \theta)$ changes. *only 0.06 % anisotropy*
+:::
+
+## Anisotropic Magnetosensitivity at 5.0 mT (100 $\times$ higher)
+
+::: {.columns}
+::: {.column width="70%"}
+![](images/phi_cutoff0.1_chi1024_theta_4subplots_B5.0.svg)
+:::
+
+::: {.column width="30%"}
+![](images/legend.svg)
+:::
+:::
+
+::: {.callout-important}
+## Observation
+- The anisotropy is now much larger ($\sim 5\%$).
+- The orientation is **completely different** from low-field case.
+:::
+
+# Conclusion & Outlook
+
+## Conclusion & Outlook
+
+::: {.callout-tip}
+## What We Achieved
+- introduced and benchmarked three tensor-network formalisms (MPS, vMPDO, LPMPS) for simulating radical-pair systems.
+- enabled simulations with 30--60 nuclei.
+- reproduced the anisotropic magnetosensitivity of the cryptochrome radical pair, showing distinct behaviours at low and high fields.
+:::
+
+::: {.callout-note}
+## Limitations and Next Steps
+- **Longer timescales ($> 1~\mu\mathrm{s}$):** Entanglement growth remains a challenge, requiring larger bond dimensions or new techniques.
+- **Towards realism:**
+  - Incorporate more accurate parameters from *ab initio* calculations ($J, \mathbf{D}, \mathbf{A}_{i,j}$).
+  - Couple spin dynamics to molecular motion from MD simulations.
+  - Include other relaxation mechanisms (e.g., Redfield theory).
+  - Model the full multi-radical hopping network.
+:::
+
