@@ -1,4 +1,0 @@
-[deps]
-DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
-ElectronSpinDynamics = "aa68f387-e3bf-4208-a9fa-5f722d68c8a5"
-IniFile = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
