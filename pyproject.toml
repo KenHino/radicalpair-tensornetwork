@@ -1,0 +1,14 @@
+[project]
+name = "radicalpair-tensornetwork"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pytdscf",
+    "radicalpy",
+]
+
+[tool.uv.sources]
+pytdscf = { git = "https://github.com/QCLovers/PyTDSCF.git", rev = "7a11dcb625f04c62495b62a25dd9083dfe3badde" }
+radicalpy = { git = "https://github.com/Spin-Chemistry-Labs/radicalpy.git", rev = "d4729d61dd3417454b8ff2f512f2b1b56b731c15" }
