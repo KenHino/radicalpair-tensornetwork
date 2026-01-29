@@ -1,5 +1,10 @@
 """C-D hopping model by vMPDO"""
 # To understand code, see vmpdo.py at first, which is a single radical pair solved by vMPDO
+"""
+```
+>>> uv run crypyo-aiso-twopairs.py 1e-01 0 
+```
+"""
 import json
 import sys
 
@@ -23,7 +28,7 @@ from pytdscf.util import read_nc
 cutoff = float(sys.argv[1]) # in mT
 angle = int(sys.argv[2])    # k/8 pi
 assert angle in [0, 1, 2, 3, 4, 5, 6, 7]
-m = 128 # 1024  # Bond dimension
+m = 1024  # Bond dimension
 B0 = 0.050 # or 5.0 in mT
 
 print(f"{pytdscf.__version__=}")

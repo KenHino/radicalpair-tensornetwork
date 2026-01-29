@@ -10,5 +10,10 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-pytdscf = { git = "https://github.com/QCLovers/PyTDSCF.git", rev = "7a11dcb625f04c62495b62a25dd9083dfe3badde" }
+pytdscf = { git = "https://github.com/QCLovers/PyTDSCF.git", rev = "ac2c0a68ac9c166c5a44806fb42740975c4b38c9" }
 radicalpy = { git = "https://github.com/Spin-Chemistry-Labs/radicalpy.git", rev = "d4729d61dd3417454b8ff2f512f2b1b56b731c15" }
+
+[dependency-groups]
+dev = [
+    "jupyterlab>=4.5.2",
+]

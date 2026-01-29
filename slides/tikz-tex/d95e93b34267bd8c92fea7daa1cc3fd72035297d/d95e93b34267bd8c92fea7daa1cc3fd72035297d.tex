@@ -1,0 +1,67 @@
+\documentclass[tikz]{standalone}
+% \usepackage{tikz} % already loaded by the documentclass
+
+
+\begin{document}
+\usetikzlibrary{positioning,calc,fit,backgrounds,arrows}
+\begin{tikzpicture}[
+    >=Latex,
+    font=\footnotesize,
+    every node/.style={align=center},
+    state/.style={draw, rounded corners=2pt, inner sep=2pt, fill=blue!3},
+    box/.style={draw, rounded corners=3pt, inner sep=4pt, fill=green!6},
+    kred/.style={text=red!75!black},
+    kgrn/.style={text=green!50!black},
+    lbl/.style={text=blue!60!black},
+    flow/.style={-Latex, ultra thick, draw=blue!70!black},
+    thinflow/.style={-Latex, semithick, draw=blue!70!black},
+    back/.style={-Latex, semithick, draw=blue!70!black}
+  ]
+
+  % --- ladder on the left (Blue light excitation)
+  \node[state] (fadox) at (0,0) {$\mathrm{FAD}^{\mathrm{ox}}$};
+  \node[state, above=65mm of fadox] (fadstar) {$\mathrm{FAD}^{*}$};
+  \node[state, below right=3mm and 10mm of fadstar] (rpa) {$\mathrm{RP}_{\mathrm{A}}$};
+  \node[state, below right=3mm and 10mm of rpa] (rpb) {$\mathrm{RP}_\mathrm{B}$};
+
+  % --- composite radical pair box behind RPC/RPD
+  \node[state, fill=orange!15, inner sep=2pt, below right=4mm and 12mm of rpb] (rpc) {$\mathrm{RP}_\mathrm{C}$};
+  \node[state, fill=orange!15, inner sep=2pt, right=14mm of rpc] (rpd) {$\mathrm{RP}_\mathrm{D}$};
+  \begin{scope}[on background layer]
+    \node[box, fill=green!15, fit={(rpc) (rpd)}] (compbox) {};
+  \end{scope}
+  \node[above=4mm of compbox] {\scriptsize Composite radical pair};
+
+  \node[state, below=16mm of rpc] (rp2c) {$\mathrm{RP}_{\mathrm{C}}^2$};
+  \node[state, below=16mm of rpd] (rp2d) {$\mathrm{RP}_{\mathrm{D}}^2$};
+  \node at ($(rp2c)!0.5!(rp2d)+(0,4mm)$) {\scriptsize Stabilized\\radical pairs};
+  \node[state, below=18mm of $(rp2c)!0.5!(rp2d)$, minimum width=24mm] (fadh) {$\mathrm{FADH}^\bullet$\\[-1pt]\scriptsize Potential signalling state};
+
+  % main flow arrows (blue)
+  \draw[flow] (fadox) -- node[left, lbl]{Blue light} (fadstar);
+  \draw[flow] (fadstar) -- (rpa);
+  \draw[flow] (rpa) -- node[above, lbl, xshift=2mm] {$\sim 1 \mathrm{ps}^{-1}$} (rpb);
+  \draw[flow] (rpb) -- node[above, lbl, xshift=2mm] {$\sim 0.1 \mathrm{ps}^{-1}$} (rpc);
+
+  % interconversion C <-> D
+  \draw[thinflow] (rpc) -- ($(rpc)!0.5!(rpd)+(0,0.25)$) -- (rpd);
+  \draw[thinflow] (rpd) -- ($(rpc)!0.5!(rpd)-(0,0.25)$) -- (rpc);
+  \node[kred] at ($(rpc)!0.5!(rpd)+(0,0.75)$) {$k_{\mathrm{C}\to\mathrm{D}}=15 \mathrm{ns}^{-1}$};
+  \node[kred] at ($(rpc)!0.5!(rpd)-(0,0.75)$) {$k_{\mathrm{D}\to\mathrm{C}}=13 \mathrm{ns}^{-1}$};
+
+  % stabilized radical pairs RPC -> RP2C, RPD -> RP2D
+  \draw[thinflow] (rpc) -- node[left, kgrn] {$k_{f}^{\mathrm{C}} =5.7 \mathrm{\mu s}^{-1}$} (rp2c);
+  \draw[thinflow] (rpd) -- node[right, kgrn] {$k_{f}^{\mathrm{D}} =10 \mathrm{\mu s}^{-1}$} (rp2d);
+
+  % signalling state
+  \draw[flow] (rp2c) -- (fadh);
+  \draw[flow] (rp2d) -- (fadh);
+  \draw[flow] (fadh) -- (fadox);
+
+  % back reactions to FADox (rates k_Cr)
+  \draw[thinflow] (rpc.south west) .. controls +(-1.0,-0.8) and +(0.6,1.1)
+  .. node[pos=0.55, right, kred] {$k_{r}^{\mathrm{C}}=17 \mathrm{\mu s}^{-1}$} (fadox.north);
+
+\end{tikzpicture}
+\end{document}
+      
