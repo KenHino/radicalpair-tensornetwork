@@ -120,8 +120,17 @@ where `0.3` is the cutoff in mT, `0` is the angle in pi/8, and `C` is the C or D
 
 The notebook and input files we used to generate the geometres are in `coordinate` directory. See json files for the resulting hyperfine tensors.
 
+### Nuclear polarisation
+<img width="579" height="338" alt="image" src="https://github.com/user-attachments/assets/4b9f943c-0eda-446e-9df0-e5f31f6059a2" />
 
-# Plot the results
+```bash
+$ uv run crypto-aiso-twopairs-dnp.py 0.1 0
+```
+will execute trace-preserving Lindblad simulation and export all one-site reduced dentisy matrices every time step.
+Then, `plot-dnp.ipynb` shows $\langle I(t)\rangle$ trajectories including spheres.
+
+
+# Plot results
 
 Please refer Jupyter notebooks. (change file paths if necessary)
-The requirements is the same as the installation. (Thus, you can activate `uv run jupyter lab` to open the notebooks.)
+The requirement is the same as the installation. (Thus, you can activate `uv run jupyter lab` to open notebooks.)
