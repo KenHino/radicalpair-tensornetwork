@@ -1,15 +1,21 @@
 # radicalpair-tensornetwork
 Script to reproduce manuscript
 ```bibtex
-@misc{hino2025introductionmodellingradicalpair,
-      title={Introduction of modelling radical pair quantum spin dynamics with tensor networks}, 
-      author={Kentaro Hino and Damyan S. Frantzov and Yuki Kurashige and Lewis M. Antill},
-      year={2025},
-      eprint={2509.22104},
-      archivePrefix={arXiv},
-      primaryClass={quant-ph},
-      url={https://arxiv.org/abs/2509.22104}, 
+@article{10.1063/5.0314129,
+    author = {Hino, Kentaro and Frantzov, Damyan S. and Kurashige, Yuki and Antill, Lewis M.},
+    title = {Introduction to modeling radical pair quantum spin dynamics with tensor networks},
+    journal = {The Journal of Chemical Physics},
+    volume = {164},
+    number = {8},
+    pages = {084101},
+    year = {2026},
+    month = {02},
+    issn = {0021-9606},
+    doi = {10.1063/5.0314129},
+    url = {https://doi.org/10.1063/5.0314129},
+    eprint = {https://pubs.aip.org/aip/jcp/article-pdf/doi/10.1063/5.0314129/20915944/084101_1_5.0314129.pdf},
 }
+
 ```
 
 # Installation
